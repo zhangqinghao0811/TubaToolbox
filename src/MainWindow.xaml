@@ -1,0 +1,50 @@
+<Window x:Class="TubaToolbox.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Tuba Toolbox 硬件工具箱" 
+        Height="650" Width="1000"
+        MinWidth="850" MinHeight="550"
+        WindowStartupLocation="CenterScreen"
+        Background="#2980B9">
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="140"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 左侧边栏 -->
+        <Border Grid.Column="0" Background="#34495E">
+            <StackPanel Margin="5,10,0,0">
+                <!-- 标题 -->
+                <TextBlock Text="Tuba" FontSize="16" FontWeight="Bold" 
+                           Foreground="White" FontFamily="Segoe UI"
+                           HorizontalAlignment="Left" Margin="8,0,0,15"/>
+                
+                <!-- 分类按钮 -->
+                <Button Content="硬件信息" Style="{StaticResource CategoryButton}" Tag="硬件信息" Click="Category_Click"/>
+                <Button Content="CPU工具" Style="{StaticResource CategoryButton}" Tag="CPU工具" Click="Category_Click"/>
+                <Button Content="主板工具" Style="{StaticResource CategoryButton}" Tag="主板工具" Click="Category_Click"/>
+                <Button Content="内存工具" Style="{StaticResource CategoryButton}" Tag="内存工具" Click="Category_Click"/>
+                <Button Content="显卡工具" Style="{StaticResource CategoryButton}" Tag="显卡工具" Click="Category_Click"/>
+                <Button Content="磁盘工具" Style="{StaticResource CategoryButton}" Tag="磁盘工具" Click="Category_Click"/>
+                <Button Content="屏幕工具" Style="{StaticResource CategoryButton}" Tag="屏幕工具" Click="Category_Click"/>
+                <Button Content="综合工具" Style="{StaticResource CategoryButton}" Tag="综合工具" Click="Category_Click"/>
+                <Button Content="外设工具" Style="{StaticResource CategoryButton}" Tag="外设工具" Click="Category_Click"/>
+                <Button Content="烤鸡工具" Style="{StaticResource CategoryButton}" Tag="烤鸡工具" Click="Category_Click"/>
+                <Button Content="游戏工具" Style="{StaticResource CategoryButton}" Tag="游戏工具" Click="Category_Click"/>
+                <Button Content="其他工具" Style="{StaticResource CategoryButton}" Tag="其他工具" Click="Category_Click"/>
+
+                <!-- 版本号 -->
+                <TextBlock Text="v2026.04" FontSize="11" Foreground="#969696" 
+                           FontFamily="Segoe UI" VerticalAlignment="Bottom"
+                           Margin="8,20,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 右侧内容区 - 使用ContentControl切换页面，天然无遮挡问题 -->
+        <Border Grid.Column="1" Background="#3498DB">
+            <ContentControl x:Name="contentArea" Margin="30,15,15,15"/>
+        </Border>
+    </Grid>
+</Window>

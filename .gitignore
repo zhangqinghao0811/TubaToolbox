@@ -1,0 +1,26 @@
+# 构建输出
+bin/
+obj/
+publish/
+
+# 编译产物
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+
+# IDE/编辑器
+.vs/
+*.user
+*.suo
+*.cache
+.idea/
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 自动生成的图标
+app.ico

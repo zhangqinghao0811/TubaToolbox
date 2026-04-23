@@ -1,0 +1,7 @@
+<UserControl x:Class="TubaToolbox.HardwareInfoPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+        <StackPanel x:Name="rootPanel" Margin="5,10,5,20"/>
+    </ScrollViewer>
+</UserControl>

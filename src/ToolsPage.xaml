@@ -1,0 +1,7 @@
+<UserControl x:Class="TubaToolbox.ToolsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <WrapPanel x:Name="toolsPanel" Orientation="Horizontal"/>
+    </ScrollViewer>
+</UserControl>
