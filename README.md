@@ -5,6 +5,7 @@
 ## 项目简介
 
 Tuba Toolbox 是对经典「图吧工具箱」的现代化重写版本。原版软件在 Windows 开启 **"Beta: 使用 Unicode UTF-8 提供全球语言支持"** 后会出现严重的中文乱码问题。本项目使用 WPF 框架从零重写，彻底解决编码问题的同时提供更美观的界面和更好的用户体验。
+图吧工具箱下载地址：https://www.tbtool.cn/download/index.html
 
 ## 功能特性
 
