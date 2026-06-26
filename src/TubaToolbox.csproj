@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <AssemblyName>TubaToolbox</AssemblyName>
     <RootNamespace>TubaToolbox</RootNamespace>
     <ApplicationIcon Condition="Exists('..\app.ico')">..\app.ico</ApplicationIcon>
+    <LangVersion>12.0</LangVersion>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -17,9 +19,17 @@
     <PublishDir>..\publish</PublishDir>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="8.0.*" />
-    <PackageReference Include="System.Management" Version="8.0.*" />
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <Reference Include="System.Management" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
+    <PackageReference Include="System.Drawing.Common" Version="$(_TargetFrameworkVersionWithoutV).*" />
+    <PackageReference Include="System.Management" Version="$(_TargetFrameworkVersionWithoutV).*" />
   </ItemGroup>
 
 </Project>
