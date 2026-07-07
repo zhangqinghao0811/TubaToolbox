@@ -141,31 +141,53 @@ namespace TubaToolbox
                     {
                         string productName = key.GetValue("ProductName", "Windows")?.ToString() ?? "Windows";
                         string displayVersion = key.GetValue("DisplayVersion", "")?.ToString() ?? "";
-                        int buildNumber = 0;
-                        int.TryParse(key.GetValue("CurrentBuildNumber", "0")?.ToString(), out buildNumber);
-                        string editionName = key.GetValue("EditionID", "")?.ToString() ?? "";
 
-                        // 判断系统主版本：Win11 的 BuildNumber >= 22000
-                        // 注意：Win11 的 ProductName 注册表项仍为 "Windows 10"，需要根据 BuildNumber 修正
+                        // 读取 Build Number，优先 CurrentBuildNumber，其次 CurrentBuild
+                        int buildNumber = 0;
+                        object buildObj = key.GetValue("CurrentBuildNumber") ?? key.GetValue("CurrentBuild");
+                        if (buildObj != null)
+                            int.TryParse(buildObj.ToString(), out buildNumber);
+
+                        // 判断主版本：Win11 的 BuildNumber >= 22000
+                        // 注意：Win11 的 ProductName 注册表项仍为 "Windows 10"，需根据 BuildNumber 修正
                         string majorName = productName;
                         if (buildNumber >= 22000)
                         {
-                            majorName = productName.Replace("Windows 10", "Windows 11");
-                            if (!majorName.Contains("Windows 11"))
-                                majorName = "Windows 11";
+                            if (majorName.Contains("Windows 10"))
+                                majorName = majorName.Replace("Windows 10", "Windows 11");
+                            else if (!majorName.Contains("Windows 11"))
+                                majorName = "Windows 11 " + majorName;
                         }
 
-                        // 组装版本名（包含中文版别名 + 版本号如 23H2）
-                        string edition = !string.IsNullOrEmpty(editionName) ? $" {editionName}" : "";
-                        string version = !string.IsNullOrEmpty(displayVersion) ? $" {displayVersion}" : "";
+                        // 将英文版名翻译为中文，与 Windows 中文版显示一致
+                        majorName = TranslateEditionToChinese(majorName);
 
-                        return $"{majorName}{edition}{version} {arch}";
+                        string version = !string.IsNullOrEmpty(displayVersion) ? $" {displayVersion}" : "";
+                        return $"{majorName}{version} {arch}";
                     }
                 }
                 return $"Windows {arch}";
             }
             catch { }
             return "无法获取";
+        }
+
+        /// <summary>
+        /// 将 ProductName 中的英文版名翻译为中文，与 Windows 中文版显示一致。
+        /// 例如 "Windows 11 Pro" → "Windows 11 专业版"
+        /// </summary>
+        private static string TranslateEditionToChinese(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            // 顺序敏感：先替换长串，避免 "Pro" 匹配到 "Pro for Workstations" 中的部分
+            return name
+                .Replace("Pro for Workstations", "工作站版")
+                .Replace("Professional", "专业版")
+                .Replace(" Pro", " 专业版")
+                .Replace("Home Single Language", "家庭单语言版")
+                .Replace("Home", "家庭版")
+                .Replace("Education", "教育版")
+                .Replace("Enterprise", "企业版");
         }
 
         private string GetUptime()
@@ -246,22 +268,44 @@ namespace TubaToolbox
             {
                 var monitors = new System.Collections.Generic.List<string>();
 
-                // 首选：使用 WmiMonitorID 从 root\wmi 命名空间获取真实显示器名称（来自 EDID）
+                // 首选：Win32_PnPEntity 获取显示器设备名（格式如 "Generic Monitor (P27H2V)"）
+                // 提取括号内的真实型号，与 Windows 设置>系统>屏幕 高级显示器设置 一致
                 try
                 {
-                    using (var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorID WHERE Active = TRUE"))
+                    using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE PNPClass='Monitor'"))
                     {
                         foreach (ManagementObject mo in searcher.Get())
                         {
-                            string name = ReadWmiMonitorName(mo);
-                            if (!string.IsNullOrEmpty(name) && !monitors.Contains(name))
-                                monitors.Add(name);
+                            string name = mo["Name"]?.ToString();
+                            if (string.IsNullOrEmpty(name)) continue;
+
+                            string realName = ExtractMonitorModelName(name);
+                            if (!string.IsNullOrEmpty(realName) && !monitors.Contains(realName))
+                                monitors.Add(realName);
                         }
                     }
                 }
                 catch { }
 
-                // 备选：若 WmiMonitorID 获取失败，回退到 Win32_DesktopMonitor
+                // 次选：WmiMonitorID 从 EDID 读取 UserFriendlyName
+                if (monitors.Count == 0)
+                {
+                    try
+                    {
+                        using (var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorID WHERE Active = TRUE"))
+                        {
+                            foreach (ManagementObject mo in searcher.Get())
+                            {
+                                string name = ReadWmiMonitorName(mo);
+                                if (!string.IsNullOrEmpty(name) && !monitors.Contains(name))
+                                    monitors.Add(name);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // 最后回退：Win32_DesktopMonitor
                 if (monitors.Count == 0)
                 {
                     using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DesktopMonitor"))
@@ -279,14 +323,46 @@ namespace TubaToolbox
         }
 
         /// <summary>
+        /// 从 "Generic Monitor (P27H2V)" 这种格式中提取括号内的真实型号。
+        /// 若无括号，则返回原始名称。
+        /// </summary>
+        private static string ExtractMonitorModelName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            int start = name.IndexOf('(');
+            int end = name.LastIndexOf(')');
+            if (start >= 0 && end > start + 1)
+            {
+                return name.Substring(start + 1, end - start - 1).Trim();
+            }
+            return name;
+        }
+
+        /// <summary>
         /// 从 WmiMonitorID 实例中读取 UserFriendlyName 字段（UInt16 数组）并转换为字符串。
         /// </summary>
         private static string ReadWmiMonitorName(ManagementObject mo)
         {
             try
             {
-                var raw = mo["UserFriendlyName"] as ushort[];
-                if (raw == null || raw.Length == 0) return null;
+                object rawObj = mo["UserFriendlyName"];
+                if (rawObj == null) return null;
+
+                ushort[] raw;
+                if (rawObj is ushort[] direct)
+                {
+                    raw = direct;
+                }
+                else if (rawObj is Array arr)
+                {
+                    raw = new ushort[arr.Length];
+                    for (int i = 0; i < arr.Length; i++)
+                        raw[i] = Convert.ToUInt16(arr.GetValue(i));
+                }
+                else return null;
+
+                if (raw.Length == 0) return null;
+
                 var chars = new char[raw.Length];
                 for (int i = 0; i < raw.Length; i++)
                 {
