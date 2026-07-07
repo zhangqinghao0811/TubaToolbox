@@ -136,8 +136,32 @@ namespace TubaToolbox
             {
                 string arch = Environment.Is64BitOperatingSystem ? "64位" : "32位";
                 using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
-                if (key != null)
-                    return $"{key.GetValue("ProductName", "Windows")} {arch}";
+                {
+                    if (key != null)
+                    {
+                        string productName = key.GetValue("ProductName", "Windows")?.ToString() ?? "Windows";
+                        string displayVersion = key.GetValue("DisplayVersion", "")?.ToString() ?? "";
+                        int buildNumber = 0;
+                        int.TryParse(key.GetValue("CurrentBuildNumber", "0")?.ToString(), out buildNumber);
+                        string editionName = key.GetValue("EditionID", "")?.ToString() ?? "";
+
+                        // 判断系统主版本：Win11 的 BuildNumber >= 22000
+                        // 注意：Win11 的 ProductName 注册表项仍为 "Windows 10"，需要根据 BuildNumber 修正
+                        string majorName = productName;
+                        if (buildNumber >= 22000)
+                        {
+                            majorName = productName.Replace("Windows 10", "Windows 11");
+                            if (!majorName.Contains("Windows 11"))
+                                majorName = "Windows 11";
+                        }
+
+                        // 组装版本名（包含中文版别名 + 版本号如 23H2）
+                        string edition = !string.IsNullOrEmpty(editionName) ? $" {editionName}" : "";
+                        string version = !string.IsNullOrEmpty(displayVersion) ? $" {displayVersion}" : "";
+
+                        return $"{majorName}{edition}{version} {arch}";
+                    }
+                }
                 return $"Windows {arch}";
             }
             catch { }
@@ -221,16 +245,58 @@ namespace TubaToolbox
             try
             {
                 var monitors = new System.Collections.Generic.List<string>();
-                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DesktopMonitor"))
-                foreach (ManagementObject mo in searcher.Get())
+
+                // 首选：使用 WmiMonitorID 从 root\wmi 命名空间获取真实显示器名称（来自 EDID）
+                try
                 {
-                    string name = mo["Name"]?.ToString();
-                    if (!string.IsNullOrEmpty(name) && !monitors.Contains(name)) monitors.Add(name);
+                    using (var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorID WHERE Active = TRUE"))
+                    {
+                        foreach (ManagementObject mo in searcher.Get())
+                        {
+                            string name = ReadWmiMonitorName(mo);
+                            if (!string.IsNullOrEmpty(name) && !monitors.Contains(name))
+                                monitors.Add(name);
+                        }
+                    }
                 }
+                catch { }
+
+                // 备选：若 WmiMonitorID 获取失败，回退到 Win32_DesktopMonitor
+                if (monitors.Count == 0)
+                {
+                    using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DesktopMonitor"))
+                    foreach (ManagementObject mo in searcher.Get())
+                    {
+                        string name = mo["Name"]?.ToString();
+                        if (!string.IsNullOrEmpty(name) && !monitors.Contains(name)) monitors.Add(name);
+                    }
+                }
+
                 return monitors.Count > 0 ? string.Join(" / ", monitors) : "无法获取";
             }
             catch { }
             return "无法获取";
+        }
+
+        /// <summary>
+        /// 从 WmiMonitorID 实例中读取 UserFriendlyName 字段（UInt16 数组）并转换为字符串。
+        /// </summary>
+        private static string ReadWmiMonitorName(ManagementObject mo)
+        {
+            try
+            {
+                var raw = mo["UserFriendlyName"] as ushort[];
+                if (raw == null || raw.Length == 0) return null;
+                var chars = new char[raw.Length];
+                for (int i = 0; i < raw.Length; i++)
+                {
+                    if (raw[i] == 0) { Array.Resize(ref chars, i); break; }
+                    chars[i] = (char)raw[i];
+                }
+                var name = new string(chars).TrimEnd('\0', ' ');
+                return string.IsNullOrEmpty(name) ? null : name;
+            }
+            catch { return null; }
         }
 
         private string GetDiskInfo()
