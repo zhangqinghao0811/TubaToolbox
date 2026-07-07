@@ -28,8 +28,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
-    <PackageReference Include="System.Drawing.Common" Version="$(_TargetFrameworkVersionWithoutV).*" />
-    <PackageReference Include="System.Management" Version="$(_TargetFrameworkVersionWithoutV).*" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.*" />
+    <PackageReference Include="System.Management" Version="8.0.*" />
   </ItemGroup>
 
 </Project>
